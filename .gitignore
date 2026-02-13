@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+cache
+outputs/agent_deliverables/*
+!outputs/agent_deliverables/.gitkeep
+logs/*.json
+logs/*.md
+!logs/human_reviews.md
+!logs/authorship_log.md
+key.txt
