@@ -1,0 +1,16 @@
+{
+  "id": "session-1772449846297",
+  "startedAt": "2026-03-02T11:10:46.297Z",
+  "platform": "win32",
+  "cwd": "C:\\Users\\hotre\\OneDrive\\Desktop\\Coding Projects\\LOTR Typing Game",
+  "context": {},
+  "metrics": {
+    "edits": 0,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "restoredAt": "2026-03-02T11:11:22.144Z",
+  "endedAt": "2026-03-02T11:12:04.957Z",
+  "duration": 78661
+}
