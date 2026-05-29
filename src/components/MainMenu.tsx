@@ -2,11 +2,18 @@ import React from 'react';
 import { useGameStore } from '../stores/useGameStore';
 import { TERRARIA_UI } from '../styles/terrariaUI';
 
+const AMBIENT_EMBERS = Array.from({ length: 18 }, (_, i) => ({
+  left: (i * 41) % 100,
+  dur: 3 + (i % 5),
+  delay: (i % 8) * 0.6,
+}));
+
 const MainMenu: React.FC = () => {
   const gamePhase = useGameStore((state) => state.gamePhase);
   const menuStep = useGameStore((state) => state.menuStep);
   const setMenuStep = useGameStore((state) => state.setMenuStep);
   const highScore = useGameStore((state) => state.highScore);
+  const reducedMotion = useGameStore((state) => state.reducedMotion);
 
   if (gamePhase !== 'menu' || menuStep !== 'main') return null;
 
@@ -21,8 +28,30 @@ const MainMenu: React.FC = () => {
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 500,
+        overflow: 'hidden',
+        animation: reducedMotion ? undefined : 'fadeIn 0.4s ease',
       }}
     >
+      {!reducedMotion && (
+        <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          {AMBIENT_EMBERS.map((e, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                left: `${e.left}%`,
+                bottom: -10,
+                width: 3,
+                height: 3,
+                borderRadius: '50%',
+                background: i % 3 === 0 ? '#ff8c42' : '#ffd966',
+                boxShadow: '0 0 6px #ff8c42',
+                animation: `emberRise ${e.dur}s ease-in ${e.delay}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       <div
         style={{
           ...TERRARIA_UI.panelStyle(),

@@ -5,6 +5,7 @@ import { TERRARIA_UI } from '../styles/terrariaUI';
 const CountdownOverlay: React.FC = () => {
   const gamePhase = useGameStore((state) => state.gamePhase);
   const countdownNumber = useGameStore((state) => state.countdownNumber);
+  const reducedMotion = useGameStore((state) => state.reducedMotion);
 
   if (gamePhase !== 'countdown') return null;
 
@@ -21,12 +22,14 @@ const CountdownOverlay: React.FC = () => {
       }}
     >
       <span
+        key={countdownNumber}
         style={{
           fontFamily: TERRARIA_UI.font,
           fontSize: '72px',
           color: countdownNumber === 0 ? TERRARIA_UI.accent.success : TERRARIA_UI.accent.gold,
           textShadow: '0 0 20px rgba(0,0,0,0.8)',
-          animation: 'pulse 0.5s ease-in-out',
+          display: 'inline-block',
+          animation: reducedMotion ? undefined : 'popScale 0.45s ease',
         }}
       >
         {countdownNumber === 0 ? 'GO!' : countdownNumber}

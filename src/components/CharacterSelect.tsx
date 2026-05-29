@@ -8,6 +8,13 @@ const CHARACTERS = [
   { id: 'mage', name: 'MAGE', desc: 'QUICK & CLEVER' },
 ];
 
+const MODES = [
+  { id: 'endless', label: 'ENDLESS', desc: 'SURVIVE AS LONG AS YOU CAN' },
+  { id: 'timed', label: 'TIMED', desc: 'RACE THE CLOCK FOR A HIGH SCORE' },
+  { id: 'zen', label: 'ZEN', desc: 'NO GAME OVER — JUST TYPE & RELAX' },
+  { id: 'hardcore', label: 'HARDCORE', desc: 'ONE MISTAKE ENDS THE RUN' },
+] as const;
+
 const CharacterSelect: React.FC = () => {
   const gamePhase = useGameStore((state) => state.gamePhase);
   const menuStep = useGameStore((state) => state.menuStep);
@@ -74,19 +81,22 @@ const CharacterSelect: React.FC = () => {
           ))}
         </div>
         <div style={{ marginTop: '16px', marginBottom: '12px' }}>
-          <span style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.text.muted, marginRight: '8px' }}>MODE:</span>
-          <button
-            style={TERRARIA_UI.buttonStyle(gameMode === 'endless')}
-            onClick={() => setGameMode('endless')}
-          >
-            ENDLESS
-          </button>
-          <button
-            style={{ ...TERRARIA_UI.buttonStyle(gameMode === 'timed'), marginLeft: '8px' }}
-            onClick={() => setGameMode('timed')}
-          >
-            TIMED
-          </button>
+          <div style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.text.muted, marginBottom: '8px' }}>MODE:</div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                className="lotr-btn"
+                style={{ ...TERRARIA_UI.buttonStyle(gameMode === m.id), fontSize: '8px' }}
+                onClick={() => setGameMode(m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontFamily: TERRARIA_UI.font, fontSize: '7px', color: TERRARIA_UI.text.muted, marginTop: '8px', lineHeight: 1.7 }}>
+            {MODES.find((m) => m.id === gameMode)?.desc ?? ''}
+          </div>
         </div>
         <button
           style={{ ...TERRARIA_UI.buttonStyle(!!selectedId), marginTop: '12px', fontSize: '10px' }}

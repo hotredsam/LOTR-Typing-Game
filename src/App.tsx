@@ -98,6 +98,20 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [gamePhase, handleFullscreen]);
 
+  // Auto-pause when the tab/window loses focus during active play so the player
+  // never returns to a lost game. Resuming runs through the normal pause flow.
+  useEffect(() => {
+    const onBlur = () => {
+      const s = useGameStore.getState();
+      if (s.gamePhase === 'playing' && !s.isPaused) s.setPaused(true);
+    };
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) onBlur();
+    });
+    return () => window.removeEventListener('blur', onBlur);
+  }, []);
+
   const themeBg = THEME_BACKGROUNDS[colorTheme] ?? THEME_BACKGROUNDS.default;
 
   return (
