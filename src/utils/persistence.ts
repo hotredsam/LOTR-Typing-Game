@@ -1,3 +1,4 @@
+const LAST_MODE_KEY = 'lotr_typing_last_mode';
 const HIGH_SCORE_KEY = 'lotr_typing_high_score';
 const LEADERBOARD_KEY = 'lotr_typing_leaderboard';
 const ACHIEVEMENTS_KEY = 'lotr_typing_achievements';
@@ -66,22 +67,58 @@ export interface ISettings {
   soundEnabled: boolean;
   colorTheme: string;
   timedDuration: number;
+  volume: number;
+  reducedMotion: boolean;
+  maxLives: number;
+  fontScale: number;
 }
 
-const DEFAULT_SETTINGS: ISettings = { soundEnabled: true, colorTheme: 'default', timedDuration: 60 };
+const DEFAULT_SETTINGS: ISettings = {
+  soundEnabled: true,
+  colorTheme: 'default',
+  timedDuration: 60,
+  volume: 60,
+  reducedMotion: false,
+  maxLives: 3,
+  fontScale: 1,
+};
 
+/**
+ * Loads settings, filling in any missing fields with defaults. This makes the
+ * stored shape forward/backward compatible (a v1 blob missing newer keys still
+ * loads cleanly rather than crashing or wiping the user's preferences).
+ */
 export function loadSettings(): ISettings {
   try {
     const v = localStorage.getItem(SETTINGS_KEY);
-    if (!v) return DEFAULT_SETTINGS;
-    const o = JSON.parse(v);
+    if (!v) return { ...DEFAULT_SETTINGS };
+    const o = JSON.parse(v) ?? {};
     return {
       soundEnabled: typeof o.soundEnabled === 'boolean' ? o.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
       colorTheme: typeof o.colorTheme === 'string' ? o.colorTheme : DEFAULT_SETTINGS.colorTheme,
       timedDuration: typeof o.timedDuration === 'number' ? o.timedDuration : DEFAULT_SETTINGS.timedDuration,
+      volume: typeof o.volume === 'number' ? clamp(o.volume, 0, 100) : DEFAULT_SETTINGS.volume,
+      reducedMotion: typeof o.reducedMotion === 'boolean' ? o.reducedMotion : DEFAULT_SETTINGS.reducedMotion,
+      maxLives: typeof o.maxLives === 'number' ? clamp(Math.round(o.maxLives), 1, 9) : DEFAULT_SETTINGS.maxLives,
+      fontScale: typeof o.fontScale === 'number' ? clamp(o.fontScale, 0.75, 1.5) : DEFAULT_SETTINGS.fontScale,
     };
   } catch {
-    return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+/** Clears all persisted progress: scores, leaderboard, achievements, stats. */
+export function resetProgress(): void {
+  try {
+    [HIGH_SCORE_KEY, LEADERBOARD_KEY, ACHIEVEMENTS_KEY, 'lotr_typing_stats_v1'].forEach((k) =>
+      localStorage.removeItem(k)
+    );
+  } catch {
+    /* ignore */
   }
 }
 
@@ -89,6 +126,25 @@ export function saveSettings(s: ISettings): void {
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   } catch {}
+}
+
+const VALID_MODES = ['endless', 'timed', 'zen', 'hardcore'];
+
+export function loadLastMode(): string {
+  try {
+    const v = localStorage.getItem(LAST_MODE_KEY);
+    return v && VALID_MODES.includes(v) ? v : 'endless';
+  } catch {
+    return 'endless';
+  }
+}
+
+export function saveLastMode(mode: string): void {
+  try {
+    localStorage.setItem(LAST_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function addToWordHistory(word: string, current: string[]): string[] {

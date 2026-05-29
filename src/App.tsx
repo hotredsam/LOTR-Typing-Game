@@ -12,14 +12,26 @@ import HowToPlay from './components/HowToPlay';
 import Credits from './components/Credits';
 import SettingsOverlay from './components/SettingsOverlay';
 import AchievementsOverlay from './components/AchievementsOverlay';
+import About from './components/About';
+import AchievementToast from './components/AchievementToast';
 import { useGameStore } from './stores/useGameStore';
-import { setSoundEnabled } from './utils/sound';
+import { setSoundEnabled, setMasterVolume } from './utils/sound';
+
+const THEME_BACKGROUNDS: Record<string, string> = {
+  default: 'radial-gradient(ellipse at center, #1a1a2e 0%, #0d0d14 70%)',
+  forest: 'radial-gradient(ellipse at center, #1a2e1a 0%, #0d140d 70%)',
+  dusk: 'radial-gradient(ellipse at center, #2e1a1a 0%, #140d0d 70%)',
+  mithril: 'radial-gradient(ellipse at center, #1c2733 0%, #0a0f14 70%)',
+  mordor: 'radial-gradient(ellipse at center, #2a0f0f 0%, #0a0505 70%)',
+  contrast: 'radial-gradient(ellipse at center, #000000 0%, #000000 70%)',
+};
 
 const App: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const gamePhase = useGameStore((state) => state.gamePhase);
   const soundEnabled = useGameStore((state) => state.soundEnabled);
   const colorTheme = useGameStore((state) => state.colorTheme);
+  const volume = useGameStore((state) => state.volume);
 
   useEffect(() => {
     useGameStore.getState().hydrateFromStorage();
@@ -28,6 +40,10 @@ const App: React.FC = () => {
   useEffect(() => {
     setSoundEnabled(soundEnabled);
   }, [soundEnabled]);
+
+  useEffect(() => {
+    setMasterVolume(volume / 100);
+  }, [volume]);
 
   useEffect(() => {
     if (!gameRef.current) {
@@ -82,12 +98,21 @@ const App: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [gamePhase, handleFullscreen]);
 
-  const themeBg =
-    colorTheme === 'forest'
-      ? 'radial-gradient(ellipse at center, #1a2e1a 0%, #0d140d 70%)'
-      : colorTheme === 'dusk'
-        ? 'radial-gradient(ellipse at center, #2e1a1a 0%, #140d0d 70%)'
-        : 'radial-gradient(ellipse at center, #1a1a2e 0%, #0d0d14 70%)';
+  // Auto-pause when the tab/window loses focus during active play so the player
+  // never returns to a lost game. Resuming runs through the normal pause flow.
+  useEffect(() => {
+    const onBlur = () => {
+      const s = useGameStore.getState();
+      if (s.gamePhase === 'playing' && !s.isPaused) s.setPaused(true);
+    };
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) onBlur();
+    });
+    return () => window.removeEventListener('blur', onBlur);
+  }, []);
+
+  const themeBg = THEME_BACKGROUNDS[colorTheme] ?? THEME_BACKGROUNDS.default;
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: themeBg }}>
@@ -112,9 +137,11 @@ const App: React.FC = () => {
         <Credits />
         <SettingsOverlay />
         <AchievementsOverlay />
+        <About />
         <GameOver />
         <PauseOverlay />
         <CountdownOverlay />
+        <AchievementToast />
       </div>
     </div>
   );

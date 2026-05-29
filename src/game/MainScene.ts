@@ -1,19 +1,35 @@
 import Phaser from 'phaser';
 import { useGameStore } from '../stores/useGameStore';
-import { getRandomWord } from '../utils/wordGenerator';
+import { getWordByLevel } from '../utils/wordGenerator';
+import { getWordCategory, WordCategory } from '../utils/wordGenerator';
 import { InputHandler } from './InputHandler';
 import { IWord } from '../types/game';
 import { calculateStats, wordPoints, lengthBonus, speedBonus } from '../utils/scoring';
 import { getDifficulty } from '../utils/difficultyManager';
-import { playWordComplete, playCombo, playMiss, playTypingTick } from '../utils/sound';
+import { playWordComplete, playCombo, playMiss, playTypingTick, playPowerUp, playLevelUp } from '../utils/sound';
+import { rollPowerUp, powerUpForWord, PowerUp } from '../utils/powerups';
 
 const PAD = 10;
+const DANGER_Y = 540;
+const FLOOR_Y = 600;
+
+/** Colour of the un-typed word text, per category. */
+const CATEGORY_COLOR: Record<WordCategory, string> = {
+  character: '#8ed0ff',
+  place: '#9be37f',
+  creature: '#ff9b9b',
+  item: '#ffd966',
+  phrase: '#e6a3ff',
+};
 
 interface WordDisplay {
   container: Phaser.GameObjects.Container;
   panel: Phaser.GameObjects.Graphics;
   typedText: Phaser.GameObjects.Text;
   remainingText: Phaser.GameObjects.Text;
+  width: number;
+  category: WordCategory;
+  powerUp: PowerUp | null;
 }
 
 export default class MainScene extends Phaser.Scene {
@@ -21,6 +37,7 @@ export default class MainScene extends Phaser.Scene {
   private wordDisplays: Map<string, WordDisplay> = new Map();
   private spawnTimer!: Phaser.Time.TimerEvent;
   private camera: Phaser.Cameras.Scene2D.Camera | null = null;
+  private dangerLine: Phaser.GameObjects.Graphics | null = null;
 
   private startTime: number = 0;
   private totalCharsTyped: number = 0;
@@ -29,6 +46,13 @@ export default class MainScene extends Phaser.Scene {
   private typedLength: number = 0;
   private countdownAccum: number = 0;
   private timedAccum: number = 0;
+  private lastLevel: number = 1;
+
+  // Power-up runtime state.
+  private freezeUntil: number = 0;
+  private slowUntil: number = 0;
+  private doubleUntil: number = 0;
+  private shieldActive: boolean = false;
 
   constructor() {
     super('MainScene');
@@ -42,8 +66,14 @@ export default class MainScene extends Phaser.Scene {
     this.correctCharsTyped = 0;
     this.focusedWordId = null;
     this.typedLength = 0;
+    this.lastLevel = 1;
+    this.freezeUntil = 0;
+    this.slowUntil = 0;
+    this.doubleUntil = 0;
+    this.shieldActive = false;
 
     this.drawParallaxBackground(width, height);
+    this.drawDangerLine(width);
 
     if (!this.textures.exists('particle_gold')) {
       const g = this.make.graphics({ x: 0, y: 0 });
@@ -69,11 +99,25 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  private get reducedMotion(): boolean {
+    return useGameStore.getState().reducedMotion;
+  }
+
+  private drawDangerLine(w: number): void {
+    this.dangerLine = this.add.graphics().setDepth(-0.4);
+    this.dangerLine.lineStyle(2, 0x8b2635, 0.5);
+    this.dangerLine.beginPath();
+    this.dangerLine.moveTo(0, DANGER_Y);
+    this.dangerLine.lineTo(w, DANGER_Y);
+    this.dangerLine.strokePath();
+  }
+
   private spawnWord(): void {
-    const { gamePhase, isPaused } = useGameStore.getState();
+    const store = useGameStore.getState();
+    const { gamePhase, isPaused } = store;
     if (gamePhase !== 'playing' || isPaused) return;
 
-    const { score } = useGameStore.getState();
+    const { score, level } = store;
     const difficulty = getDifficulty(score);
 
     if (this.spawnTimer.delay !== difficulty.spawnRate) {
@@ -85,16 +129,19 @@ export default class MainScene extends Phaser.Scene {
       });
     }
 
-    const wordText = getRandomWord();
+    // Decide whether this spawn is a power-up word.
+    const powerUp = rollPowerUp(level);
+    const wordText = powerUp ? powerUp.word : getWordByLevel(level);
     const id = Phaser.Utils.String.UUID();
-    const x = Phaser.Math.Between(100, 700);
+    const measureWidth = Math.min(620, Math.max(140, wordText.length * 18));
+    const x = Phaser.Math.Between(60, Math.max(80, 800 - measureWidth));
     const speed = Phaser.Math.Between(difficulty.minSpeed, difficulty.maxSpeed);
     const spawnedAt = Date.now();
 
     const wordData: IWord = { id, text: wordText, x, y: -50, speed, spawnedAt };
     useGameStore.getState().addWord(wordData);
 
-    this.createWordDisplay(id, wordText, x, -50);
+    this.createWordDisplay(id, wordText, x, -50, powerUp);
   }
 
   private drawParallaxBackground(w: number, h: number): void {
@@ -148,25 +195,23 @@ export default class MainScene extends Phaser.Scene {
     }
   }
 
-  private createWordDisplay(id: string, text: string, x: number, y: number): void {
+  private createWordDisplay(id: string, text: string, x: number, y: number, powerUp: PowerUp | null): void {
+    const fontScale = useGameStore.getState().fontScale || 1;
+    const fontSize = `${Math.round(20 * fontScale)}px`;
+    const category = getWordCategory(text);
+    const remainingColor = powerUp ? '#fff6c0' : CATEGORY_COLOR[category];
+
     const baseStyle = {
-      fontSize: '20px',
+      fontSize,
       fontFamily: '"Press Start 2P", monospace',
       padding: { x: PAD, y: PAD },
     };
-    const typedPart = this.add
-      .text(PAD, 0, '', { ...baseStyle, color: '#7bed9f' })
-      .setOrigin(0, 0.5);
-    const remainingPart = this.add
-      .text(PAD, 0, text, { ...baseStyle, color: '#dfe6e9' })
-      .setOrigin(0, 0.5);
+    const typedPart = this.add.text(PAD, 0, '', { ...baseStyle, color: '#7bed9f' }).setOrigin(0, 0.5);
+    const remainingPart = this.add.text(PAD, 0, text, { ...baseStyle, color: remainingColor }).setOrigin(0, 0.5);
     const totalW = Math.max(remainingPart.width + PAD * 2 + 60, 140);
-    const panel = this.add
-      .graphics()
-      .fillStyle(0x2d3436, 0.95)
-      .fillRoundedRect(-4, -18, totalW + 8, 36, 4)
-      .lineStyle(2, 0x636e72)
-      .strokeRoundedRect(-4, -18, totalW + 8, 36, 4);
+
+    const panel = this.add.graphics();
+    this.paintPanel(panel, totalW, powerUp ? powerUp.tint : 0x636e72, !!powerUp);
 
     const container = this.add.container(x, y);
     container.add([panel, typedPart, remainingPart]);
@@ -174,8 +219,27 @@ export default class MainScene extends Phaser.Scene {
     typedPart.setDepth(0);
     remainingPart.setDepth(0);
 
-    this.wordDisplays.set(id, { container, panel, typedText: typedPart, remainingText: remainingPart });
-    this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 200, from: 1.2 });
+    this.wordDisplays.set(id, {
+      container,
+      panel,
+      typedText: typedPart,
+      remainingText: remainingPart,
+      width: totalW,
+      category,
+      powerUp,
+    });
+    if (!this.reducedMotion) {
+      this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 200, from: 1.2 });
+    }
+  }
+
+  private paintPanel(panel: Phaser.GameObjects.Graphics, totalW: number, strokeColor: number, glow: boolean): void {
+    panel.clear();
+    panel
+      .fillStyle(0x2d3436, glow ? 0.98 : 0.95)
+      .fillRoundedRect(-4, -18, totalW + 8, 36, 4)
+      .lineStyle(glow ? 3 : 2, strokeColor, 1)
+      .strokeRoundedRect(-4, -18, totalW + 8, 36, 4);
   }
 
   private updateWordDisplay(id: string, word: IWord, typedLen: number): void {
@@ -189,10 +253,19 @@ export default class MainScene extends Phaser.Scene {
   }
 
   private handleKeyPress(char: string): void {
-    const { activeWords, updateScore, setStats, setGameOver, isGameOver, gamePhase, addCombo, resetCombo, addWordsCompleted, addStreak, resetStreak, addWordToHistory, isPaused } = useGameStore.getState();
+    const store = useGameStore.getState();
+    const { activeWords, setStats, isGameOver, gamePhase, resetCombo, resetStreak, isPaused, gameMode } = store;
     if (isGameOver || gamePhase !== 'playing' || isPaused) return;
 
     this.totalCharsTyped++;
+
+    const onMiss = () => {
+      playMiss();
+      resetCombo();
+      resetStreak();
+      this.flashWrong();
+      if (gameMode === 'hardcore') this.endGame();
+    };
 
     if (this.focusedWordId) {
       const word = activeWords.find((w) => w.id === this.focusedWordId!);
@@ -202,36 +275,14 @@ export default class MainScene extends Phaser.Scene {
         return;
       }
       const expected = word.text[this.typedLength];
-      const isLastChar = this.typedLength === word.text.length - 1;
       if (expected !== undefined && expected.toLowerCase() === char.toLowerCase()) {
         playTypingTick();
         this.correctCharsTyped++;
         this.typedLength++;
         this.updateWordDisplay(word.id, word, this.typedLength);
-        if (isLastChar || this.typedLength === word.text.length) {
-          const state = useGameStore.getState();
-          const lenBonus = lengthBonus(word.text.length);
-          const spdBonus = word.spawnedAt != null ? speedBonus(Date.now() - word.spawnedAt) : 0;
-          const points = wordPoints(word.text.length, state.comboMultiplier, lenBonus, spdBonus);
-          updateScore(points);
-          addCombo();
-          addWordsCompleted(1);
-          addStreak();
-          addWordToHistory(word.text);
-          playWordComplete();
-          if (useGameStore.getState().combo > 1) playCombo();
-          this.playWordCompleteEffect(word);
-          this.showFloatingScore(word, points);
-          this.screenShake();
-          this.removeWord(word.id);
-          this.focusedWordId = null;
-          this.typedLength = 0;
-        }
+        if (this.typedLength >= word.text.length) this.completeWord(word);
       } else {
-        playMiss();
-        resetCombo();
-        resetStreak();
-        this.screenShakeWrong();
+        onMiss();
       }
     } else {
       const matchedWord = activeWords.find((w) => w.text.toLowerCase().startsWith(char.toLowerCase()));
@@ -241,30 +292,9 @@ export default class MainScene extends Phaser.Scene {
         this.correctCharsTyped++;
         this.typedLength = 1;
         this.updateWordDisplay(matchedWord.id, matchedWord, 1);
-        if (matchedWord.text.length === 1) {
-          const state = useGameStore.getState();
-          const lenBonus = lengthBonus(matchedWord.text.length);
-          const spdBonus = matchedWord.spawnedAt != null ? speedBonus(Date.now() - matchedWord.spawnedAt) : 0;
-          const points = wordPoints(matchedWord.text.length, state.comboMultiplier, lenBonus, spdBonus);
-          updateScore(points);
-          addCombo();
-          addWordsCompleted(1);
-          addStreak();
-          addWordToHistory(matchedWord.text);
-          playWordComplete();
-          if (useGameStore.getState().combo > 1) playCombo();
-          this.playWordCompleteEffect(matchedWord);
-          this.showFloatingScore(matchedWord, points);
-          this.screenShake();
-          this.removeWord(matchedWord.id);
-          this.focusedWordId = null;
-          this.typedLength = 0;
-        }
+        if (matchedWord.text.length === 1) this.completeWord(matchedWord);
       } else {
-        playMiss();
-        resetCombo();
-        resetStreak();
-        this.screenShakeWrong();
+        onMiss();
       }
     }
 
@@ -272,14 +302,113 @@ export default class MainScene extends Phaser.Scene {
     setStats(stats.wpm, stats.accuracy);
   }
 
+  private completeWord(word: IWord): void {
+    const state = useGameStore.getState();
+    const disp = this.wordDisplays.get(word.id);
+    const lenBonus = lengthBonus(word.text.length);
+    const spdBonus = word.spawnedAt != null ? speedBonus(Date.now() - word.spawnedAt) : 0;
+    const doubling = Date.now() < this.doubleUntil ? 2 : 1;
+    const points = wordPoints(word.text.length, state.comboMultiplier, lenBonus, spdBonus) * doubling;
+
+    state.updateScore(points);
+    state.addCombo();
+    state.addWordsCompleted(1);
+    state.addStreak();
+    state.addWordToHistory(word.text);
+
+    playWordComplete();
+    const combo = useGameStore.getState().combo;
+    if (combo > 1) playCombo(combo);
+    if (combo > 1 && combo % 5 === 0) this.showComboCallout(combo);
+
+    this.playWordCompleteEffect(word);
+    this.showFloatingScore(word, points);
+    this.screenShake();
+
+    // Trigger power-up effects.
+    const power = disp?.powerUp ?? powerUpForWord(word.text);
+    if (power) this.activatePowerUp(power);
+
+    this.removeWord(word.id);
+    this.focusedWordId = null;
+    this.typedLength = 0;
+  }
+
+  private activatePowerUp(power: PowerUp): void {
+    const now = Date.now();
+    useGameStore.getState().unlockAchievement('powerup');
+    playPowerUp();
+    switch (power.id) {
+      case 'freeze':
+        this.freezeUntil = now + power.durationMs;
+        break;
+      case 'slow':
+        this.slowUntil = now + power.durationMs;
+        break;
+      case 'double':
+        this.doubleUntil = now + power.durationMs;
+        break;
+      case 'shield':
+        this.shieldActive = true;
+        break;
+      case 'clear':
+        this.clearAllWords();
+        break;
+    }
+    this.showPowerUpBanner(power.label);
+  }
+
+  private clearAllWords(): void {
+    const ids = Array.from(this.wordDisplays.keys());
+    ids.forEach((id) => {
+      if (id === this.focusedWordId) {
+        this.focusedWordId = null;
+        this.typedLength = 0;
+      }
+      this.removeWord(id);
+    });
+  }
+
+  private showPowerUpBanner(label: string): void {
+    const t = this.add
+      .text(400, 120, label, {
+        fontSize: '16px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#fff6c0',
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+    this.tweens.add({ targets: t, y: 90, alpha: { from: 1, to: 0 }, duration: 1400, onComplete: () => t.destroy() });
+  }
+
+  private showComboCallout(combo: number): void {
+    const t = this.add
+      .text(400, 220, `COMBO x${combo}!`, {
+        fontSize: '24px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#ffd700',
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+    this.tweens.add({
+      targets: t,
+      scale: { from: 0.4, to: 1.2 },
+      alpha: { from: 1, to: 0 },
+      duration: 900,
+      onComplete: () => t.destroy(),
+    });
+  }
+
   private screenShake(): void {
-    if (!this.camera) return;
+    if (!this.camera || this.reducedMotion) return;
     this.camera.shake(80, 0.002);
   }
 
-  private screenShakeWrong(): void {
-    if (!this.camera) return;
+  private flashWrong(): void {
+    if (!this.camera || this.reducedMotion) return;
     this.camera.shake(30, 0.001);
+    this.camera.flash(120, 90, 20, 20);
   }
 
   private showFloatingScore(word: IWord, points: number): void {
@@ -293,13 +422,7 @@ export default class MainScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(100);
-    this.tweens.add({
-      targets: text,
-      y: text.y - 50,
-      alpha: 0,
-      duration: 800,
-      onComplete: () => text.destroy(),
-    });
+    this.tweens.add({ targets: text, y: text.y - 50, alpha: 0, duration: 800, onComplete: () => text.destroy() });
   }
 
   private playWordCompleteEffect(word: IWord): void {
@@ -308,17 +431,19 @@ export default class MainScene extends Phaser.Scene {
     const worldX = disp.container.x;
     const worldY = disp.container.y;
     const particleKey = this.textures.exists('particle_gold') ? 'particle_gold' : 'particle';
+    // More particles for longer words.
+    const quantity = Phaser.Math.Clamp(16 + word.text.length * 3, 16, 64);
     const emitter = this.add.particles(worldX, worldY, particleKey, {
       speed: { min: 80, max: 220 },
       scale: { start: 1.2, end: 0 },
       blendMode: 'ADD',
       lifespan: 600,
-      tint: 0xffd700,
+      tint: disp.powerUp ? disp.powerUp.tint : 0xffd700,
       gravityY: 180,
-      quantity: 28,
+      quantity,
       emitting: false,
     });
-    emitter.explode(28);
+    emitter.explode(quantity);
     this.time.delayedCall(1200, () => emitter.destroy());
   }
 
@@ -335,15 +460,61 @@ export default class MainScene extends Phaser.Scene {
     }
   }
 
+  /** Centralised game-over so every caller goes through one path. */
+  private endGame(): void {
+    useGameStore.getState().resetCombo();
+    useGameStore.getState().resetStreak();
+    useGameStore.getState().setGameOver(true);
+  }
+
+  /** A word fell past the floor. Returns true if the game ended. */
+  private handleWordDropped(id: string): boolean {
+    const store = useGameStore.getState();
+    const mode = store.gameMode;
+
+    // Zen mode never penalises a dropped word.
+    if (mode === 'zen') {
+      this.removeWord(id);
+      return false;
+    }
+    // Shield absorbs the drop once.
+    if (this.shieldActive) {
+      this.shieldActive = false;
+      this.showPowerUpBanner('SHIELD ABSORBED');
+      this.removeWord(id);
+      return false;
+    }
+
+    store.resetCombo();
+    store.resetStreak();
+    this.removeWord(id);
+
+    if (mode === 'hardcore') {
+      this.endGame();
+      return true;
+    }
+
+    const remaining = store.loseLife();
+    if (remaining <= 0) {
+      this.endGame();
+      return true;
+    }
+    if (this.camera && !this.reducedMotion) this.camera.flash(180, 120, 20, 20);
+    return false;
+  }
+
   update(_time: number, delta: number): void {
     const store = useGameStore.getState();
-    const { activeWords, setGameOver, setGamePhase, setTimeRemaining, setCountdownNumber, gamePhase, gameMode, timedDuration, resetCombo, resetStreak } = store;
+    const { activeWords, setGamePhase, setTimeRemaining, setCountdownNumber, gamePhase, gameMode, timedDuration } = store;
     if (store.isGameOver) return;
 
     if (gamePhase === 'countdown') {
       if (store.countdownNumber === 3) {
         this.wordDisplays.forEach((d) => d.container.destroy());
         this.wordDisplays.clear();
+        this.focusedWordId = null;
+        this.typedLength = 0;
+        this.lastLevel = 1;
       }
       this.countdownAccum += delta;
       if (this.countdownAccum >= 1000) {
@@ -364,28 +535,67 @@ export default class MainScene extends Phaser.Scene {
     if (gamePhase !== 'playing' || store.isPaused) return;
 
     const dt = delta / 1000;
+    const now = Date.now();
+
+    // Level-up detection for flash + banner.
+    if (store.level > this.lastLevel) {
+      this.lastLevel = store.level;
+      this.onLevelUp(store.level);
+    }
 
     if (gameMode === 'timed') {
       this.timedAccum += delta;
       if (this.timedAccum >= 1000) {
         this.timedAccum = 0;
         store.tickTime();
-        if (store.timeRemaining <= 0) setGameOver(true);
+        if (store.timeRemaining <= 0) this.endGame();
       }
     }
 
-    activeWords.forEach((word) => {
+    const frozen = now < this.freezeUntil;
+    const slowed = now < this.slowUntil;
+    const speedFactor = frozen ? 0 : slowed ? 0.4 : 1;
+
+    // Pulse the danger line.
+    if (this.dangerLine && !this.reducedMotion) {
+      this.dangerLine.setAlpha(0.35 + 0.25 * Math.abs(Math.sin(now / 300)));
+    }
+
+    for (const word of activeWords) {
       const disp = this.wordDisplays.get(word.id);
       if (disp) {
-        word.y += word.speed * dt;
+        word.y += word.speed * dt * speedFactor;
         disp.container.setPosition(word.x, word.y);
+        // Tint the word red as it nears the danger line.
+        if (word.y > DANGER_Y - 60 && !disp.powerUp) {
+          const danger = Phaser.Math.Clamp((word.y - (DANGER_Y - 60)) / 120, 0, 1);
+          disp.remainingText.setTint(Phaser.Display.Color.GetColor(255, Math.round(155 * (1 - danger)), Math.round(155 * (1 - danger))));
+        }
       }
 
-      if (word.y > 600) {
-        resetCombo();
-        resetStreak();
-        setGameOver(true);
+      if (word.y > FLOOR_Y) {
+        if (this.handleWordDropped(word.id)) return;
       }
+    }
+  }
+
+  private onLevelUp(level: number): void {
+    playLevelUp();
+    if (this.camera && !this.reducedMotion) this.camera.flash(220, 201, 162, 39);
+    const t = this.add
+      .text(400, 160, `LEVEL ${level}`, {
+        fontSize: '20px',
+        fontFamily: '"Press Start 2P", monospace',
+        color: '#ffd700',
+      })
+      .setOrigin(0.5)
+      .setDepth(200);
+    this.tweens.add({
+      targets: t,
+      scale: { from: 0.5, to: 1.3 },
+      alpha: { from: 1, to: 0 },
+      duration: 1200,
+      onComplete: () => t.destroy(),
     });
   }
 }

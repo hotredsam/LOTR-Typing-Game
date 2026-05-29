@@ -1,10 +1,43 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { useGameStore } from '../stores/useGameStore';
 import { TERRARIA_UI } from '../styles/terrariaUI';
 import { playGameOver } from '../utils/sound';
 import { checkAchievements } from '../utils/achievements';
+import { recordGame } from '../utils/statistics';
+import { formatNumber } from '../utils/format';
 
 const CHARACTER_NAMES: Record<string, string> = { warrior: 'WARRIOR', ranger: 'RANGER', mage: 'MAGE' };
+
+/** Animates a number from 0 up to `target` once `active` becomes true. */
+function useCountUp(target: number, active: boolean, durationMs = 900, reduced = false): number {
+  const [value, setValue] = useState(0);
+  const raf = useRef<number | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setValue(0);
+      return;
+    }
+    // Skip the animation when motion is reduced, or under test where rAF
+    // callbacks aren't flushed (so the real value is asserted immediately).
+    const isTest = import.meta.env?.MODE === 'test';
+    if (reduced || isTest || typeof requestAnimationFrame !== 'function') {
+      setValue(target);
+      return;
+    }
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(target * eased));
+      if (t < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => {
+      if (raf.current) cancelAnimationFrame(raf.current);
+    };
+  }, [target, active, durationMs, reduced]);
+  return value;
+}
 
 const GameOver: React.FC = () => {
   const isGameOver = useGameStore((state) => state.isGameOver);
@@ -17,9 +50,12 @@ const GameOver: React.FC = () => {
   const leaderboard = useGameStore((state) => state.leaderboard);
   const wordHistory = useGameStore((state) => state.wordHistory);
   const selectedCharacterId = useGameStore((state) => state.selectedCharacterId);
+  const reducedMotion = useGameStore((state) => state.reducedMotion);
   const resetGame = useGameStore((state) => state.resetGame);
   const pushToLeaderboard = useGameStore((state) => state.pushToLeaderboard);
   const unlockAchievement = useGameStore((state) => state.unlockAchievement);
+
+  const animatedScore = useCountUp(score, isGameOver, 900, reducedMotion);
 
   useEffect(() => {
     if (isGameOver) playGameOver();
@@ -39,10 +75,19 @@ const GameOver: React.FC = () => {
         highScore: state.highScore,
         gameMode: state.gameMode,
         timeRemaining: state.timeRemaining,
+        level: state.level,
+        accuracy: state.accuracy,
       },
       prevHigh,
       (id) => unlockAchievement(id)
     );
+    recordGame({
+      words: state.wordsCompleted,
+      score: state.score,
+      timeMs: state.gameMode === 'timed' ? state.timedDuration * 1000 : 0,
+      wpm: Math.round(state.wpm),
+      combo: state.bestCombo,
+    });
   }, [isGameOver, score, pushToLeaderboard, unlockAchievement, highScore]);
 
   const handleRestart = useCallback(() => {
@@ -93,7 +138,7 @@ const GameOver: React.FC = () => {
           </p>
         )}
         <p style={{ fontFamily: TERRARIA_UI.font, fontSize: '12px', color: TERRARIA_UI.accent.gold, marginBottom: '4px' }}>
-          FINAL SCORE: {score}
+          FINAL SCORE: {formatNumber(animatedScore)}
         </p>
         {isNewRecord && (
           <p style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.accent.success, marginBottom: '16px' }}>
@@ -115,7 +160,7 @@ const GameOver: React.FC = () => {
             {topScores.length ? topScores.map((s, i) => <div key={i}>#{i + 1} {s}</div>) : '—'}
           </div>
         </div>
-        <button style={TERRARIA_UI.buttonStyle(true)} onClick={handleRestart}>
+        <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(true)} onClick={handleRestart}>
           RESTART (R)
         </button>
       </div>

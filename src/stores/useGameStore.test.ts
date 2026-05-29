@@ -116,4 +116,48 @@ describe('useGameStore', () => {
     expect(useGameStore.getState().combo).toBe(0)
     expect(useGameStore.getState().comboMultiplier).toBe(1)
   })
+
+  it('startGame seeds lives from maxLives in endless mode', () => {
+    useGameStore.getState().setMaxLives(5)
+    useGameStore.getState().setGameMode('endless')
+    useGameStore.getState().startGame()
+    expect(useGameStore.getState().lives).toBe(5)
+  })
+
+  it('hardcore mode starts with a single life', () => {
+    useGameStore.getState().setGameMode('hardcore')
+    useGameStore.getState().startGame()
+    expect(useGameStore.getState().lives).toBe(1)
+  })
+
+  it('zen mode has infinite lives', () => {
+    useGameStore.getState().setGameMode('zen')
+    useGameStore.getState().startGame()
+    expect(useGameStore.getState().lives).toBe(Infinity)
+  })
+
+  it('loseLife decrements and never goes below zero', () => {
+    useGameStore.getState().setMaxLives(2)
+    useGameStore.getState().setGameMode('endless')
+    useGameStore.getState().startGame()
+    expect(useGameStore.getState().loseLife()).toBe(1)
+    expect(useGameStore.getState().loseLife()).toBe(0)
+    expect(useGameStore.getState().loseLife()).toBe(0)
+  })
+
+  it('volume and reducedMotion setters update state', () => {
+    useGameStore.getState().setVolume(40)
+    expect(useGameStore.getState().volume).toBe(40)
+    const before = useGameStore.getState().reducedMotion
+    useGameStore.getState().toggleReducedMotion()
+    expect(useGameStore.getState().reducedMotion).toBe(!before)
+  })
+
+  it('unlockAchievement records lastUnlocked for the toast', () => {
+    useGameStore.setState({ achievements: [], lastUnlocked: null })
+    useGameStore.getState().unlockAchievement('first_word')
+    expect(useGameStore.getState().lastUnlocked).toBe('first_word')
+    useGameStore.getState().clearLastUnlocked()
+    expect(useGameStore.getState().lastUnlocked).toBeNull()
+  })
 })
