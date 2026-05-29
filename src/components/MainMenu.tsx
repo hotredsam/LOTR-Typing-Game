@@ -48,20 +48,27 @@ const MainMenu: React.FC = () => {
         <p style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.accent.goldLight, marginBottom: '28px' }}>
           BEST: {highScore}
         </p>
-        <button style={TERRARIA_UI.buttonStyle(true)} onClick={() => setMenuStep('character')}>
+        <button
+          className="lotr-btn"
+          style={TERRARIA_UI.buttonStyle(true)}
+          onClick={() => setMenuStep('character')}
+        >
           BEGIN MISSION
         </button>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
-          <button style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('howto')}>
+          <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('howto')}>
             HOW TO PLAY
           </button>
-          <button style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('credits')}>
+          <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('about')}>
+            ABOUT
+          </button>
+          <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('credits')}>
             CREDITS
           </button>
-          <button style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('settings')}>
+          <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('settings')}>
             SETTINGS
           </button>
-          <button style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('achievements')}>
+          <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('achievements')}>
             ACHIEVEMENTS
           </button>
         </div>

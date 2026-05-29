@@ -14,3 +14,104 @@ body {
   0%, 100% { opacity: 0; }
   50% { opacity: 0.3; }
 }
+
+/* ---- Shared UI animation library (used by overlays & the About page) ---- */
+
+@keyframes goldShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(110%) translateX(0); opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.7; }
+  100% { transform: translateY(-20%) translateX(var(--drift, 0)); opacity: 0; }
+}
+
+@keyframes emberRise {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { transform: translateY(-120px) scale(0.3); opacity: 0; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ringGlow {
+  0%, 100% { text-shadow: 0 0 6px #c9a227, 0 0 12px #8a6a12; }
+  50% { text-shadow: 0 0 14px #ffd966, 0 0 28px #c9a227, 0 0 40px #8a6a12; }
+}
+
+@keyframes popScale {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes scorePop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); color: #fff3b0; }
+  100% { transform: scale(1); }
+}
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Pixel-art focus ring shared by every interactive control. */
+button:focus-visible,
+[role='button']:focus-visible,
+a:focus-visible {
+  outline: 3px solid #ffd966;
+  outline-offset: 2px;
+}
+
+/* Custom pixel scrollbar for scrollable overlays. */
+.lotr-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #c9a227 #2d1f17;
+}
+.lotr-scroll::-webkit-scrollbar { width: 10px; }
+.lotr-scroll::-webkit-scrollbar-track { background: #2d1f17; }
+.lotr-scroll::-webkit-scrollbar-thumb {
+  background: #c9a227;
+  border: 2px solid #2d1f17;
+}
+.lotr-scroll::-webkit-scrollbar-thumb:hover { background: #e8d5a3; }
+
+/* Generic button hover/press micro-animation. */
+.lotr-btn { transition: transform 0.08s ease, filter 0.12s ease; }
+.lotr-btn:hover { transform: translateY(-1px); filter: brightness(1.12); }
+.lotr-btn:active { transform: translateY(1px); filter: brightness(0.95); }
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
