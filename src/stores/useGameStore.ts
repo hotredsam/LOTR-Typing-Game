@@ -9,6 +9,8 @@ import {
   unlockAchievement,
   loadSettings,
   saveSettings,
+  loadLastMode,
+  saveLastMode,
 } from '../utils/persistence';
 
 interface GameActions {
@@ -48,6 +50,13 @@ interface GameActions {
   setFullscreen: (on: boolean) => void;
   toggleFullscreen: () => void;
   setTimedDuration: (sec: number) => void;
+  setMaxLives: (n: number) => void;
+  loseLife: () => number;
+  setVolume: (v: number) => void;
+  setReducedMotion: (on: boolean) => void;
+  toggleReducedMotion: () => void;
+  setFontScale: (n: number) => void;
+  clearLastUnlocked: () => void;
   hydrateFromStorage: () => void;
 }
 
@@ -81,6 +90,12 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
   difficultyLabel: 'EASY',
   isFullscreen: false,
   timedDuration: 60,
+  lives: 3,
+  maxLives: 3,
+  volume: 60,
+  reducedMotion: false,
+  fontScale: 1,
+  lastUnlocked: null,
 
   addWord: (word) =>
     set((state) => ({ activeWords: [...state.activeWords, word] })),
@@ -129,6 +144,7 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
       level: 1,
       timeRemaining: state.gameMode === 'timed' ? state.timedDuration : 0,
       wordHistory: [],
+      lives: livesForMode(state.gameMode, state.maxLives),
     })),
 
   setMenuStep: (menuStep) => set(() => ({ menuStep })),
@@ -163,7 +179,10 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
       return { isPaused: p, gamePhase: p ? 'paused' : 'playing' };
     }),
 
-  setGameMode: (gameMode) => set(() => ({ gameMode })),
+  setGameMode: (gameMode) => {
+    saveLastMode(gameMode);
+    set(() => ({ gameMode }));
+  },
   setTimeRemaining: (n) => set(() => ({ timeRemaining: n })),
   tickTime: () => set((state) => ({ timeRemaining: Math.max(0, state.timeRemaining - 1) })),
   setCountdownNumber: (n) => set(() => ({ countdownNumber: n })),
@@ -192,7 +211,7 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
     set((state) => {
       if (state.achievements.includes(id)) return state;
       const achievements = unlockAchievement(id, state.achievements);
-      return { achievements };
+      return { achievements, lastUnlocked: id };
     }),
 
   setLeaderboard: (leaderboard) => set(() => ({ leaderboard })),
@@ -207,6 +226,34 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
     saveSettings({ ...loadSettings(), timedDuration });
   },
 
+  setMaxLives: (maxLives) => {
+    set(() => ({ maxLives }));
+    saveSettings({ ...loadSettings(), maxLives });
+  },
+  loseLife: () => {
+    const next = Math.max(0, get().lives - 1);
+    set(() => ({ lives: next }));
+    return next;
+  },
+  setVolume: (volume) => {
+    set(() => ({ volume }));
+    saveSettings({ ...loadSettings(), volume });
+  },
+  setReducedMotion: (reducedMotion) => {
+    set(() => ({ reducedMotion }));
+    saveSettings({ ...loadSettings(), reducedMotion });
+  },
+  toggleReducedMotion: () => {
+    const reducedMotion = !get().reducedMotion;
+    set(() => ({ reducedMotion }));
+    saveSettings({ ...loadSettings(), reducedMotion });
+  },
+  setFontScale: (fontScale) => {
+    set(() => ({ fontScale }));
+    saveSettings({ ...loadSettings(), fontScale });
+  },
+  clearLastUnlocked: () => set(() => ({ lastUnlocked: null })),
+
   hydrateFromStorage: () =>
     set(() => {
       const s = loadSettings();
@@ -217,6 +264,12 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
         soundEnabled: s.soundEnabled,
         colorTheme: s.colorTheme as IGameState['colorTheme'],
         timedDuration: s.timedDuration,
+        volume: s.volume,
+        reducedMotion: s.reducedMotion,
+        maxLives: s.maxLives,
+        lives: s.maxLives,
+        fontScale: s.fontScale,
+        gameMode: loadLastMode() as IGameState['gameMode'],
       };
     }),
 
@@ -238,5 +291,13 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
       isPaused: false,
       timeRemaining: state.gameMode === 'timed' ? state.timedDuration : 0,
       wordHistory: [],
+      lives: livesForMode(state.gameMode, state.maxLives),
     })),
 }));
+
+/** Lives for a mode: hardcore = 1, zen = effectively unlimited, else maxLives. */
+function livesForMode(mode: GameMode, maxLives: number): number {
+  if (mode === 'hardcore') return 1;
+  if (mode === 'zen') return Infinity;
+  return maxLives;
+}

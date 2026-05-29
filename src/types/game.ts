@@ -13,9 +13,16 @@ export interface IWord {
 }
 
 export type GamePhase = 'menu' | 'playing' | 'paused' | 'gameOver' | 'countdown';
-export type MenuStep = 'main' | 'character' | 'howto' | 'credits' | 'settings' | 'achievements';
-export type GameMode = 'endless' | 'timed';
-export type ColorTheme = 'default' | 'forest' | 'dusk';
+export type MenuStep =
+  | 'main'
+  | 'character'
+  | 'howto'
+  | 'credits'
+  | 'settings'
+  | 'achievements'
+  | 'about';
+export type GameMode = 'endless' | 'timed' | 'zen' | 'hardcore';
+export type ColorTheme = 'default' | 'forest' | 'dusk' | 'mithril' | 'mordor' | 'contrast';
 
 export interface IGameState {
   menuStep: MenuStep;
@@ -62,6 +69,18 @@ export interface IGameState {
   isFullscreen: boolean;
   /** Timer mode duration in seconds. */
   timedDuration: number;
+  /** Remaining lives this session. */
+  lives: number;
+  /** Configured starting lives (settings). */
+  maxLives: number;
+  /** Master volume 0..100. */
+  volume: number;
+  /** Reduced-motion accessibility flag (disables shake/heavy anim). */
+  reducedMotion: boolean;
+  /** In-game word font scale (1 = default). */
+  fontScale: number;
+  /** Id of the most recently unlocked achievement (for toast). */
+  lastUnlocked: string | null;
 }
 
 export interface IGameConfig {
