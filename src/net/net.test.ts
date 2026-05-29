@@ -6,6 +6,7 @@ import {
   peerIdForCode,
   encode,
   decode,
+  friendlyError,
   NetSnapshot,
 } from './protocol'
 import { LoopbackTransport } from './transport'
@@ -21,12 +22,15 @@ const snap: NetSnapshot = {
   guest: { id: null, len: 0 },
   score: 120,
   combo: 3,
+  bestCombo: 5,
+  streak: 3,
   lives: 3,
   level: 1,
   wordsCompleted: 4,
   countdownNumber: 0,
   wpm: 55,
   accuracy: 98,
+  difficultyLabel: 'EASY',
 }
 
 describe('protocol', () => {
@@ -66,6 +70,13 @@ describe('protocol', () => {
     expect(decode('not json')).toBeNull()
     expect(decode(JSON.stringify({ t: 'bogus' }))).toBeNull()
     expect(decode(null)).toBeNull()
+  })
+
+  it('friendlyError maps known peer errors to short messages', () => {
+    expect(friendlyError('Error: Could not connect to peer-unavailable')).toBe('NO GAME WITH THAT CODE')
+    expect(friendlyError('ID is taken')).toBe('CODE IN USE — TRY AGAIN')
+    expect(friendlyError('Lost connection to network')).toBe('NETWORK ERROR')
+    expect(friendlyError('something weird')).toBe('CONNECTION FAILED')
   })
 })
 

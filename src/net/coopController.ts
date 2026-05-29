@@ -10,9 +10,9 @@ import { useGameStore } from '../stores/useGameStore';
 import { netSession } from './session';
 import { hostPeer, joinPeer, PeerHandle } from './peerTransport';
 import { mpRuntime, resetMpRuntime } from './runtime';
-import { generateJoinCode, isValidJoinCode, normalizeJoinCode, NetSnapshot } from './protocol';
+import { generateJoinCode, isValidJoinCode, normalizeJoinCode, friendlyError, NetSnapshot } from './protocol';
 import { loadLastMode } from '../utils/persistence';
-import type { GameMode } from '../types/game';
+import type { GameMode, IGameState } from '../types/game';
 
 let handle: PeerHandle | null = null;
 
@@ -28,12 +28,15 @@ function applySnapshot(snap: NetSnapshot): void {
     isGameOver: snap.phase === 'gameOver',
     score: snap.score,
     combo: snap.combo,
+    bestCombo: snap.bestCombo,
+    streak: snap.streak,
     lives: snap.lives,
     level: snap.level,
     wordsCompleted: snap.wordsCompleted,
     countdownNumber: snap.countdownNumber,
     wpm: snap.wpm,
     accuracy: snap.accuracy,
+    difficultyLabel: snap.difficultyLabel as IGameState['difficultyLabel'],
   });
 }
 
@@ -115,10 +118,4 @@ export async function leaveCoop(): Promise<void> {
   store().setMultiplayer({ netRole: 'none', mpStatus: 'idle', mpCode: '', mpError: null, mpPartnerConnected: false });
   // Restore the player's last solo mode so 'coop' doesn't leak into single-player.
   useGameStore.setState({ gameMode: loadLastMode() as GameMode });
-}
-
-function friendlyError(raw: string): string {
-  if (/peer-unavailable/i.test(raw)) return 'NO GAME WITH THAT CODE';
-  if (/network|disconnected/i.test(raw)) return 'NETWORK ERROR';
-  return 'CONNECTION FAILED';
 }

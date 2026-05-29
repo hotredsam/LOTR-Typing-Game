@@ -79,13 +79,22 @@ export interface PeerHandle {
 export function hostPeer(code: string): PeerHandle {
   const peer = new Peer(peerIdForCode(code));
   const transport = new Promise<Transport>((resolve, reject) => {
+    let settled = false;
     peer.on('connection', (conn) => {
       const t = new DataConnTransport(conn);
-      const finish = () => resolve(t);
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve(t);
+      };
       if (conn.open) finish();
       else conn.on('open', finish);
     });
-    peer.on('error', (err) => reject(err));
+    peer.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
   });
   return { peer, transport, destroy: () => peer.destroy() };
 }
@@ -94,14 +103,23 @@ export function hostPeer(code: string): PeerHandle {
 export function joinPeer(code: string): PeerHandle {
   const peer = new Peer();
   const transport = new Promise<Transport>((resolve, reject) => {
+    let settled = false;
     peer.on('open', () => {
       const conn = peer.connect(peerIdForCode(code), { reliable: true });
       const t = new DataConnTransport(conn);
-      const finish = () => resolve(t);
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve(t);
+      };
       if (conn.open) finish();
       else conn.on('open', finish);
     });
-    peer.on('error', (err) => reject(err));
+    peer.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
   });
   return { peer, transport, destroy: () => peer.destroy() };
 }

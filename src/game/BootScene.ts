@@ -42,8 +42,8 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.load.on('loaderror', (file: Phaser.Loader.File) => {
-      // Optional assets; ignore 404
+    this.load.on('loaderror', () => {
+      // Optional assets; ignore 404 and fall back to procedural rendering.
     });
     this.scene.start('MainScene');
   }

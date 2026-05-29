@@ -126,7 +126,7 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
   setStats: (wpm, accuracy) => set(() => ({ wpm, accuracy })),
 
   setGameOver: (isGameOver) =>
-    set((state) => ({
+    set(() => ({
       isGameOver,
       gamePhase: isGameOver ? 'gameOver' : 'playing',
     })),

@@ -14,6 +14,7 @@ import SettingsOverlay from './components/SettingsOverlay';
 import AchievementsOverlay from './components/AchievementsOverlay';
 import About from './components/About';
 import MultiplayerOverlay from './components/MultiplayerOverlay';
+import PartnerDisconnected from './components/PartnerDisconnected';
 import AchievementToast from './components/AchievementToast';
 import { useGameStore } from './stores/useGameStore';
 import { setSoundEnabled, setMasterVolume } from './utils/sound';
@@ -76,6 +77,7 @@ const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const handleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
+    if (!document.fullscreenEnabled) return; // some browsers/embeds disallow it
     try {
       if (!document.fullscreenElement) {
         containerRef.current.requestFullscreen?.();
@@ -150,6 +152,7 @@ const App: React.FC = () => {
         <GameOver />
         <PauseOverlay />
         <CountdownOverlay />
+        <PartnerDisconnected />
         <AchievementToast />
       </div>
     </div>

@@ -6,6 +6,7 @@ import { checkAchievements } from '../utils/achievements';
 import { recordGame } from '../utils/statistics';
 import { formatNumber } from '../utils/format';
 import { netSession } from '../net/session';
+import { leaveCoop } from '../net/coopController';
 
 const CHARACTER_NAMES: Record<string, string> = { warrior: 'WARRIOR', ranger: 'RANGER', mage: 'MAGE' };
 
@@ -182,9 +183,21 @@ const GameOver: React.FC = () => {
           </div>
         </div>
         {netRole === 'guest' ? (
-          <p style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.text.muted, lineHeight: 1.8 }}>
-            WAITING FOR HOST TO PLAY AGAIN…
-          </p>
+          <div>
+            <p style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.text.muted, lineHeight: 1.8, marginBottom: 16 }}>
+              WAITING FOR HOST TO PLAY AGAIN…
+            </p>
+            <button
+              className="lotr-btn"
+              style={TERRARIA_UI.buttonStyle(false)}
+              onClick={() => {
+                leaveCoop();
+                useGameStore.setState({ gamePhase: 'menu', menuStep: 'main', isGameOver: false });
+              }}
+            >
+              LEAVE
+            </button>
+          </div>
         ) : (
           <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(true)} onClick={handleRestart}>
             {netRole === 'host' ? 'PLAY AGAIN (R)' : 'RESTART (R)'}

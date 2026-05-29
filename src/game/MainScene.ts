@@ -39,6 +39,8 @@ interface WordDisplay {
   powerUp: PowerUp | null;
   /** The full word text (kept so the guest mirror can re-render typed state). */
   text: string;
+  /** Base colour of the un-typed text (category or power-up), for restoring after tint. */
+  baseColor: string;
 }
 
 export default class MainScene extends Phaser.Scene {
@@ -175,6 +177,16 @@ export default class MainScene extends Phaser.Scene {
     useGameStore.getState().addWord(wordData);
 
     this.createWordDisplay(id, wordText, x, -50, powerUp);
+
+    // Clamp x using the real measured panel width so long phrases never overflow.
+    const disp = this.wordDisplays.get(id);
+    if (disp) {
+      const clampedX = Math.max(PAD, Math.min(x, 800 - disp.width - PAD));
+      if (clampedX !== x) {
+        wordData.x = clampedX;
+        disp.container.x = clampedX;
+      }
+    }
   }
 
   private drawParallaxBackground(w: number, h: number): void {
@@ -261,6 +273,7 @@ export default class MainScene extends Phaser.Scene {
       category,
       powerUp,
       text,
+      baseColor: remainingColor,
     });
     if (!this.reducedMotion) {
       this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 200, from: 1.2 });
@@ -284,6 +297,10 @@ export default class MainScene extends Phaser.Scene {
     disp.typedText.setText(disp.text.slice(0, len));
     disp.remainingText.setText(disp.text.slice(len));
     disp.remainingText.setX(PAD + disp.typedText.width);
+    // Restore the base colour and drop any danger tint so a repositioned word
+    // (slow/freeze, or a guest snapshot) never keeps a stale red colour.
+    disp.remainingText.setColor(disp.baseColor);
+    disp.remainingText.clearTint();
   }
 
   private cursorFor(who: Who): NetCursor {
@@ -641,10 +658,12 @@ export default class MainScene extends Phaser.Scene {
       if (disp) {
         word.y += word.speed * dt * speedFactor;
         disp.container.setPosition(word.x, word.y);
-        // Tint the word red as it nears the danger line.
+        // Tint the word red as it nears the danger line; clear it once safe.
         if (word.y > DANGER_Y - 60 && !disp.powerUp) {
           const danger = Phaser.Math.Clamp((word.y - (DANGER_Y - 60)) / 120, 0, 1);
           disp.remainingText.setTint(Phaser.Display.Color.GetColor(255, Math.round(155 * (1 - danger)), Math.round(155 * (1 - danger))));
+        } else {
+          disp.remainingText.clearTint();
         }
       }
 
@@ -702,12 +721,15 @@ export default class MainScene extends Phaser.Scene {
       guest: { id: this.guestFocusedWordId, len: this.guestTypedLength },
       score: s.score,
       combo: s.combo,
+      bestCombo: s.bestCombo,
+      streak: s.streak,
       lives: Number.isFinite(s.lives) ? s.lives : 99,
       level: s.level,
       wordsCompleted: s.wordsCompleted,
       countdownNumber: s.countdownNumber,
       wpm: s.wpm,
       accuracy: s.accuracy,
+      difficultyLabel: s.difficultyLabel,
     };
   }
 

@@ -34,12 +34,18 @@ export interface NetSnapshot {
   guest: NetCursor;
   score: number;
   combo: number;
+  /** Best combo this round (so guest achievements match the host). */
+  bestCombo: number;
+  /** Current no-miss streak (so guest achievements match the host). */
+  streak: number;
   lives: number;
   level: number;
   wordsCompleted: number;
   countdownNumber: number;
   wpm: number;
   accuracy: number;
+  /** Difficulty label for the guest HUD. */
+  difficultyLabel: string;
 }
 
 /** One-shot effects so the guest can play matching sound/juice. */
@@ -94,6 +100,15 @@ export function isValidJoinCode(code: string): boolean {
 /** Derives the PeerJS peer id from a join code (namespaced to avoid clashes). */
 export function peerIdForCode(code: string): string {
   return `lotr-typing-coop-${code}`;
+}
+
+/** Maps a raw PeerJS/WebRTC error string to a short, user-facing message. */
+export function friendlyError(raw: string): string {
+  if (/peer-unavailable/i.test(raw)) return 'NO GAME WITH THAT CODE';
+  if (/unavailable-id|id.*taken|is taken/i.test(raw)) return 'CODE IN USE — TRY AGAIN';
+  if (/network|disconnected|socket/i.test(raw)) return 'NETWORK ERROR';
+  if (/browser|webrtc|not supported/i.test(raw)) return 'BROWSER NOT SUPPORTED';
+  return 'CONNECTION FAILED';
 }
 
 export function encode(msg: NetMessage): string {
