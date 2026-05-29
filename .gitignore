@@ -1,7 +1,16 @@
 node_modules
 dist
+coverage
 .env
 cache
+
+# Agent-orchestration artifacts (not part of the game; keep out of the repo)
+.swarm-agent.db
+.swarm-agent.db-shm
+.swarm-agent.db-wal
+.swarm/
+folder_state.txt
+*.zip
 outputs/agent_deliverables/*
 !outputs/agent_deliverables/.gitkeep
 logs/*.json
