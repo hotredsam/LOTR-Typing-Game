@@ -7,7 +7,7 @@ import { IWord } from '../types/game';
 import { calculateStats, wordPoints, lengthBonus, speedBonus } from '../utils/scoring';
 import { getDifficulty } from '../utils/difficultyManager';
 import { playWordComplete, playCombo, playMiss, playTypingTick, playPowerUp, playLevelUp } from '../utils/sound';
-import { rollPowerUp, powerUpForWord, PowerUp } from '../utils/powerups';
+import { rollPowerUp, PowerUp } from '../utils/powerups';
 
 const PAD = 10;
 const DANGER_Y = 540;
@@ -325,9 +325,10 @@ export default class MainScene extends Phaser.Scene {
     this.showFloatingScore(word, points);
     this.screenShake();
 
-    // Trigger power-up effects.
-    const power = disp?.powerUp ?? powerUpForWord(word.text);
-    if (power) this.activatePowerUp(power);
+    // Trigger power-up effects. Power-up status is decided at spawn time only —
+    // we must NOT fall back to matching by text, because several trigger words
+    // (ent, eagle, phial, mithril, silmaril) also appear as ordinary words.
+    if (disp?.powerUp) this.activatePowerUp(disp.powerUp);
 
     this.removeWord(word.id);
     this.focusedWordId = null;

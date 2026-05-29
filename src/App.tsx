@@ -103,13 +103,20 @@ const App: React.FC = () => {
   useEffect(() => {
     const onBlur = () => {
       const s = useGameStore.getState();
+      // Don't auto-pause co-op: only the host is authoritative and a local
+      // pause would desync the guest.
+      if (s.netRole !== 'none') return;
       if (s.gamePhase === 'playing' && !s.isPaused) s.setPaused(true);
     };
-    window.addEventListener('blur', onBlur);
-    document.addEventListener('visibilitychange', () => {
+    const onVisibility = () => {
       if (document.hidden) onBlur();
-    });
-    return () => window.removeEventListener('blur', onBlur);
+    };
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const themeBg = THEME_BACKGROUNDS[colorTheme] ?? THEME_BACKGROUNDS.default;

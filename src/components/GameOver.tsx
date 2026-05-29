@@ -61,8 +61,17 @@ const GameOver: React.FC = () => {
     if (isGameOver) playGameOver();
   }, [isGameOver]);
 
+  // Guard so the leaderboard push + stats recording happen exactly once per
+  // game-over, even if the effect re-runs (dependency change or StrictMode
+  // double-invoke in dev). Resets when a new round begins.
+  const recordedRef = useRef(false);
   useEffect(() => {
-    if (!isGameOver) return;
+    if (!isGameOver) {
+      recordedRef.current = false;
+      return;
+    }
+    if (recordedRef.current) return;
+    recordedRef.current = true;
     const prevHigh = highScore === score ? score - 1 : highScore;
     pushToLeaderboard(score);
     const state = useGameStore.getState();
