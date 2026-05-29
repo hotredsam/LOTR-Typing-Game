@@ -57,6 +57,7 @@ interface GameActions {
   toggleReducedMotion: () => void;
   setFontScale: (n: number) => void;
   clearLastUnlocked: () => void;
+  setMultiplayer: (partial: Partial<Pick<IGameState, 'netRole' | 'mpStatus' | 'mpCode' | 'mpError' | 'mpPartnerConnected'>>) => void;
   hydrateFromStorage: () => void;
 }
 
@@ -96,6 +97,11 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
   reducedMotion: false,
   fontScale: 1,
   lastUnlocked: null,
+  netRole: 'none',
+  mpStatus: 'idle',
+  mpCode: '',
+  mpError: null,
+  mpPartnerConnected: false,
 
   addWord: (word) =>
     set((state) => ({ activeWords: [...state.activeWords, word] })),
@@ -253,6 +259,7 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
     saveSettings({ ...loadSettings(), fontScale });
   },
   clearLastUnlocked: () => set(() => ({ lastUnlocked: null })),
+  setMultiplayer: (partial) => set(() => ({ ...partial })),
 
   hydrateFromStorage: () =>
     set(() => {

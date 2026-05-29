@@ -20,9 +20,13 @@ export type MenuStep =
   | 'credits'
   | 'settings'
   | 'achievements'
-  | 'about';
-export type GameMode = 'endless' | 'timed' | 'zen' | 'hardcore';
+  | 'about'
+  | 'multiplayer';
+export type GameMode = 'endless' | 'timed' | 'zen' | 'hardcore' | 'coop';
 export type ColorTheme = 'default' | 'forest' | 'dusk' | 'mithril' | 'mordor' | 'contrast';
+
+export type NetRole = 'none' | 'host' | 'guest';
+export type MpStatus = 'idle' | 'hosting' | 'connecting' | 'connected' | 'error' | 'closed';
 
 export interface IGameState {
   menuStep: MenuStep;
@@ -81,6 +85,16 @@ export interface IGameState {
   fontScale: number;
   /** Id of the most recently unlocked achievement (for toast). */
   lastUnlocked: string | null;
+  /** Multiplayer co-op: this client's role. */
+  netRole: NetRole;
+  /** Multiplayer connection status. */
+  mpStatus: MpStatus;
+  /** Join code (host shows it, guest types it). */
+  mpCode: string;
+  /** Last multiplayer error message, if any. */
+  mpError: string | null;
+  /** Whether the partner is connected. */
+  mpPartnerConnected: boolean;
 }
 
 export interface IGameConfig {
