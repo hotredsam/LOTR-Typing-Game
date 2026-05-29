@@ -15,7 +15,13 @@ export class InputHandler {
 
   private onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape' || event.key === 'p' || event.key === 'P') {
-      const { gamePhase, togglePause } = useGameStore.getState();
+      const { gamePhase, togglePause, netRole } = useGameStore.getState();
+      // In co-op only the host (authoritative) can pause; a guest pause would
+      // desync and is immediately overwritten by the next snapshot anyway.
+      if (netRole === 'guest') {
+        event.preventDefault();
+        return;
+      }
       if (gamePhase === 'playing' || gamePhase === 'paused') {
         event.preventDefault();
         togglePause();

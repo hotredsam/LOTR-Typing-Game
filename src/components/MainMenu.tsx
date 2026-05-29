@@ -84,6 +84,13 @@ const MainMenu: React.FC = () => {
         >
           BEGIN MISSION
         </button>
+        <button
+          className="lotr-btn"
+          style={{ ...TERRARIA_UI.buttonStyle(false), marginTop: '12px' }}
+          onClick={() => setMenuStep('multiplayer')}
+        >
+          CO-OP MULTIPLAYER
+        </button>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
           <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(false)} onClick={() => setMenuStep('howto')}>
             HOW TO PLAY

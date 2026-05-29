@@ -102,6 +102,7 @@ export const useGameStore = create<IGameState & GameActions>((set, get) => ({
   mpCode: '',
   mpError: null,
   mpPartnerConnected: false,
+  playStartedAt: 0,
 
   addWord: (word) =>
     set((state) => ({ activeWords: [...state.activeWords, word] })),

@@ -10,6 +10,9 @@ import {
 } from './protocol'
 import { LoopbackTransport } from './transport'
 import { NetSession } from './session'
+import { useGameStore } from '../stores/useGameStore'
+
+const tick = () => new Promise((r) => setTimeout(r, 0))
 
 const snap: NetSnapshot = {
   phase: 'playing',
@@ -22,6 +25,8 @@ const snap: NetSnapshot = {
   level: 1,
   wordsCompleted: 4,
   countdownNumber: 0,
+  wpm: 55,
+  accuracy: 98,
 }
 
 describe('protocol', () => {
@@ -123,6 +128,36 @@ describe('LoopbackTransport + NetSession (host <-> guest)', () => {
     guest.broadcast(snap, true)
     await new Promise((r) => setTimeout(r, 0))
     expect(hostSnaps).toHaveLength(0)
+  })
+
+  it('a host snapshot maps onto the guest store (co-op data flow)', async () => {
+    const [hostT, guestT] = LoopbackTransport.createPair()
+    const host = new NetSession()
+    const guest = new NetSession()
+    host.attach(hostT, 'host')
+    // Mirror what coopController does on the guest side.
+    guest.attach(guestT, 'guest', {
+      onSnapshot: (s) =>
+        useGameStore.setState({
+          gamePhase: s.phase,
+          isGameOver: s.phase === 'gameOver',
+          score: s.score,
+          lives: s.lives,
+          level: s.level,
+          wordsCompleted: s.wordsCompleted,
+        }),
+    })
+    await tick()
+
+    host.broadcast({ ...snap, phase: 'playing', score: 777, lives: 2, level: 4, wordsCompleted: 9 }, true)
+    await tick()
+
+    const st = useGameStore.getState()
+    expect(st.score).toBe(777)
+    expect(st.lives).toBe(2)
+    expect(st.level).toBe(4)
+    expect(st.gamePhase).toBe('playing')
+    expect(st.isGameOver).toBe(false)
   })
 
   it('close notifies the peer', async () => {

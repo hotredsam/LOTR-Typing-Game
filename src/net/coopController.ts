@@ -11,6 +11,8 @@ import { netSession } from './session';
 import { hostPeer, joinPeer, PeerHandle } from './peerTransport';
 import { mpRuntime, resetMpRuntime } from './runtime';
 import { generateJoinCode, isValidJoinCode, normalizeJoinCode, NetSnapshot } from './protocol';
+import { loadLastMode } from '../utils/persistence';
+import type { GameMode } from '../types/game';
 
 let handle: PeerHandle | null = null;
 
@@ -30,6 +32,8 @@ function applySnapshot(snap: NetSnapshot): void {
     level: snap.level,
     wordsCompleted: snap.wordsCompleted,
     countdownNumber: snap.countdownNumber,
+    wpm: snap.wpm,
+    accuracy: snap.accuracy,
   });
 }
 
@@ -109,6 +113,8 @@ export async function leaveCoop(): Promise<void> {
   }
   resetMpRuntime();
   store().setMultiplayer({ netRole: 'none', mpStatus: 'idle', mpCode: '', mpError: null, mpPartnerConnected: false });
+  // Restore the player's last solo mode so 'coop' doesn't leak into single-player.
+  useGameStore.setState({ gameMode: loadLastMode() as GameMode });
 }
 
 function friendlyError(raw: string): string {

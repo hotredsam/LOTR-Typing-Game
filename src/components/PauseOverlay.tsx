@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../stores/useGameStore';
 import { TERRARIA_UI } from '../styles/terrariaUI';
+import { leaveCoop } from '../net/coopController';
 
 const PauseOverlay: React.FC = () => {
   const gamePhase = useGameStore((state) => state.gamePhase);
@@ -37,6 +38,7 @@ const PauseOverlay: React.FC = () => {
           <button
             style={TERRARIA_UI.buttonStyle(false)}
             onClick={() => {
+              if (useGameStore.getState().netRole !== 'none') leaveCoop();
               setGamePhase('menu');
               setMenuStep('main');
               togglePause();

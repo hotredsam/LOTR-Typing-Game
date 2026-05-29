@@ -5,6 +5,7 @@ import { playGameOver } from '../utils/sound';
 import { checkAchievements } from '../utils/achievements';
 import { recordGame } from '../utils/statistics';
 import { formatNumber } from '../utils/format';
+import { netSession } from '../net/session';
 
 const CHARACTER_NAMES: Record<string, string> = { warrior: 'WARRIOR', ranger: 'RANGER', mage: 'MAGE' };
 
@@ -51,6 +52,8 @@ const GameOver: React.FC = () => {
   const wordHistory = useGameStore((state) => state.wordHistory);
   const selectedCharacterId = useGameStore((state) => state.selectedCharacterId);
   const reducedMotion = useGameStore((state) => state.reducedMotion);
+  const netRole = useGameStore((state) => state.netRole);
+  const startGame = useGameStore((state) => state.startGame);
   const resetGame = useGameStore((state) => state.resetGame);
   const pushToLeaderboard = useGameStore((state) => state.pushToLeaderboard);
   const unlockAchievement = useGameStore((state) => state.unlockAchievement);
@@ -93,15 +96,24 @@ const GameOver: React.FC = () => {
     recordGame({
       words: state.wordsCompleted,
       score: state.score,
-      timeMs: state.gameMode === 'timed' ? state.timedDuration * 1000 : 0,
+      // Wall-clock play time for every mode (not just timed).
+      timeMs: state.playStartedAt ? Date.now() - state.playStartedAt : 0,
       wpm: Math.round(state.wpm),
       combo: state.bestCombo,
     });
   }, [isGameOver, score, pushToLeaderboard, unlockAchievement, highScore]);
 
   const handleRestart = useCallback(() => {
+    // In co-op, only the host restarts (with a countdown so the guest re-syncs);
+    // the guest just waits for the host's snapshots.
+    if (netRole === 'guest') return;
+    if (netRole === 'host') {
+      netSession.sendRestart();
+      startGame();
+      return;
+    }
     resetGame();
-  }, [resetGame]);
+  }, [netRole, resetGame, startGame]);
 
   useEffect(() => {
     if (!isGameOver) return;
@@ -169,9 +181,15 @@ const GameOver: React.FC = () => {
             {topScores.length ? topScores.map((s, i) => <div key={i}>#{i + 1} {s}</div>) : '—'}
           </div>
         </div>
-        <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(true)} onClick={handleRestart}>
-          RESTART (R)
-        </button>
+        {netRole === 'guest' ? (
+          <p style={{ fontFamily: TERRARIA_UI.font, fontSize: '8px', color: TERRARIA_UI.text.muted, lineHeight: 1.8 }}>
+            WAITING FOR HOST TO PLAY AGAIN…
+          </p>
+        ) : (
+          <button className="lotr-btn" style={TERRARIA_UI.buttonStyle(true)} onClick={handleRestart}>
+            {netRole === 'host' ? 'PLAY AGAIN (R)' : 'RESTART (R)'}
+          </button>
+        )}
       </div>
     </div>
   );

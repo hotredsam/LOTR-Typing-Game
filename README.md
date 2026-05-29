@@ -65,6 +65,28 @@ The output will be in the `dist/` directory, ready for deployment.
 | `npm run test` | Run Vitest in watch mode. |
 | `npm run test:run` | Run the full test suite once (CI-friendly). |
 
+## Co-op Multiplayer
+
+Two players defend Middle-earth together on a **shared field** — the same words
+fall for both, and you share a pool of lives.
+
+- **Connection:** serverless peer-to-peer over WebRTC (via PeerJS). No backend to
+  run; the host gets a short **join code**, the friend types it in. Works between
+  **PC and Mac** in any modern browser (Chrome, Edge, Firefox, Safari).
+- **Model:** the host is authoritative — it runs the simulation and broadcasts
+  state ~15×/sec; the guest mirrors the field and forwards keystrokes. Each
+  player's typing shows in a different colour.
+
+**To play:** Main menu → **CO-OP MULTIPLAYER**. One player picks **Create Game**
+and shares the code; the other picks **Join**, enters the code, and the host
+presses **Start Co-op**.
+
+> Note: P2P uses PeerJS's public signaling broker for the initial handshake.
+> Some restrictive networks block WebRTC; if a direct connection can't be made,
+> try a different network. (The netcode is isolated in `src/net/` behind a
+> `Transport` interface, so an alternative signaling/relay path can be added
+> without touching gameplay.)
+
 ## How to Play
 
 - Type the first letter of any falling word to lock onto it, then finish the word before it reaches the bottom.

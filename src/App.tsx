@@ -13,6 +13,7 @@ import Credits from './components/Credits';
 import SettingsOverlay from './components/SettingsOverlay';
 import AchievementsOverlay from './components/AchievementsOverlay';
 import About from './components/About';
+import MultiplayerOverlay from './components/MultiplayerOverlay';
 import AchievementToast from './components/AchievementToast';
 import { useGameStore } from './stores/useGameStore';
 import { setSoundEnabled, setMasterVolume } from './utils/sound';
@@ -145,6 +146,7 @@ const App: React.FC = () => {
         <SettingsOverlay />
         <AchievementsOverlay />
         <About />
+        <MultiplayerOverlay />
         <GameOver />
         <PauseOverlay />
         <CountdownOverlay />

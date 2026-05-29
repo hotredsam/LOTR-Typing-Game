@@ -95,6 +95,8 @@ export interface IGameState {
   mpError: string | null;
   /** Whether the partner is connected. */
   mpPartnerConnected: boolean;
+  /** Wall-clock ms timestamp when the current round's play began (post-countdown). */
+  playStartedAt: number;
 }
 
 export interface IGameConfig {

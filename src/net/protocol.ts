@@ -38,6 +38,8 @@ export interface NetSnapshot {
   level: number;
   wordsCompleted: number;
   countdownNumber: number;
+  wpm: number;
+  accuracy: number;
 }
 
 /** One-shot effects so the guest can play matching sound/juice. */
