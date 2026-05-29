@@ -4,11 +4,19 @@ A high-stakes, Lord of the Rings themed typing game where your speed and accurac
 
 ## Features
 
-- **Immersive Gameplay**: Experience the world of Middle-earth through a typing-based combat and progression system.
-- **Phaser Game Engine**: Smooth animations and high-performance game logic.
-- **Dynamic UI**: React-based interface powered by Zustand for efficient state management.
-- **Multi-Agent Development**: Built using a sophisticated orchestration system involving multiple AI agents (Codex, Gemini, Claude).
-- **Comprehensive Testing**: Robust test suite using Vitest and React Testing Library.
+- **Type to defend Middle-earth**: Words fall from the sky — type them before they hit the ground.
+- **Authentic LOTR vocabulary**: Characters, places, creatures, artifacts, and famous phrases, colour-coded by category and ramped across difficulty tiers.
+- **Four game modes**:
+  - **Endless** — survive as long as you can with a configurable lives system.
+  - **Timed** — race the clock for the highest score.
+  - **Zen** — no game over; just type and relax.
+  - **Hardcore** — a single mistake ends the run.
+- **Power-ups**: Catch special golden words to trigger **Freeze**, **Slow**, **Clear**, **Shield**, and **Double Score** effects.
+- **Combos & juice**: Combo multipliers, floating callouts, level-up flashes, particle bursts, a pulsing danger line, and screen shake (all respecting reduced-motion).
+- **21 achievements** with unlock toasts and a progress tracker.
+- **A crazy-amazing About page**: animated Middle-earth lore, the One Ring inscription, the Fellowship, realms, your personal stats, and a couple of hidden easter eggs (try typing `mellon`…).
+- **Accessibility & settings**: master volume, reduced motion, configurable lives, word size, six colour themes (incl. high-contrast), and a reset-progress option — all persisted to `localStorage`.
+- **Comprehensive Testing**: 90+ tests using Vitest and React Testing Library.
 
 ## Prerequisites
 
@@ -45,6 +53,25 @@ npm run build
 ```
 
 The output will be in the `dist/` directory, ready for deployment.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start the Vite dev server at `http://localhost:5173`. |
+| `npm run build` | Type-check and produce a production build in `dist/`. |
+| `npm run preview` | Preview the production build locally. |
+| `npm run typecheck` | Run the TypeScript compiler in no-emit mode. |
+| `npm run test` | Run Vitest in watch mode. |
+| `npm run test:run` | Run the full test suite once (CI-friendly). |
+
+## How to Play
+
+- Type the first letter of any falling word to lock onto it, then finish the word before it reaches the bottom.
+- Chain words without mistakes to build a combo multiplier (up to 3×).
+- Longer words and faster completion award bonus points.
+- Press **Esc** or **P** to pause, **F** to toggle fullscreen.
+- Pick your mode and hero on the start screen; tune everything else in **Settings**.
 
 ## Technologies Used
 
